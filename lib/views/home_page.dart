@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart'; // Import for date formatting
 import 'package:income_expenses/utils/app_color.dart';
 import 'package:income_expenses/utils/dimensions.dart';
 import 'package:income_expenses/widgets/Icon_reusable.dart';
@@ -8,8 +9,57 @@ import 'package:income_expenses/widgets/text_reusable.dart';
 
 import '../themes/theme_helper.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  DateTimeRange? selectedDateRange;
+
+  // Format the date range for display
+  String getFormattedDateRange() {
+    final DateFormat formatter = DateFormat('dd/MM/yyyy');
+
+    if (selectedDateRange == null) {
+      // Show only the current date if no range is selected (default behavior)
+      return formatter.format(DateTime.now());
+    } else if (DateFormat('yyyy-MM-dd').format(selectedDateRange!.start) ==
+        DateFormat('yyyy-MM-dd').format(selectedDateRange!.end)) {
+      // Show only the start date if it's the same as the end date (single date selected)
+      return formatter.format(selectedDateRange!.start);
+    } else {
+      // Show the full range if multiple dates are selected
+      return '${formatter.format(selectedDateRange!.start)} - ${formatter.format(selectedDateRange!.end)}';
+    }
+  }
+
+  void adjustDateRange({required bool isNext}) {
+    setState(() {
+      selectedDateRange ??= DateTimeRange(
+        start: DateTime.now(),
+        end: DateTime.now(),
+      );
+
+      DateTime newStart = selectedDateRange!.start;
+      DateTime newEnd = selectedDateRange!.end;
+
+      if (isNext) {
+        // Move to the next day
+        newStart = newStart.add(const Duration(days: 1));
+        newEnd = newEnd.add(const Duration(days: 1));
+      } else {
+        // Move to the previous day
+        newStart = newStart.subtract(const Duration(days: 1));
+        newEnd = newEnd.subtract(const Duration(days: 1));
+      }
+
+      // Update the selected date range
+      selectedDateRange = DateTimeRange(start: newStart, end: newEnd);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,26 +86,53 @@ class HomePage extends StatelessWidget {
                   children: [
                     //icon prevent
                     IconReusable(
+                      callBackOnTap: () {
+                        adjustDateRange(isNext: false);
+                      },
                       icon: Icons.arrow_back,
                       sizeIcon: dimension.iconSize17,
                       color: Colors.white,
                     ),
                     // here show the custom of day
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(dimension.radius10),
-                        border: Border.all(
-                          width: 2,
-                          color: Colors.amber,
+                    GestureDetector(
+                      onTap: () async {
+                        // Open date range picker with current date as default
+                        DateTimeRange? pickedDateRange =
+                            await showDateRangePicker(
+                          context: context,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                          initialDateRange: DateTimeRange(
+                            start: DateTime.now(),
+                            end: DateTime.now(),
+                          ), // Default to current date (single date)
+                          initialEntryMode: DatePickerEntryMode.calendar,
+                        );
+
+                        // Update the selected date range
+                        if (pickedDateRange != null) {
+                          setState(() {
+                            selectedDateRange = pickedDateRange;
+                          });
+                        }
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius:
+                              BorderRadius.circular(dimension.radius10),
+                          border: Border.all(
+                            width: 2,
+                            color: Colors.amber,
+                          ),
                         ),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(dimension.width10),
-                        child: Center(
-                          child: TextReusable(
-                            text: "21/09/2024",
-                            fontSize: dimension.fontSize15,
-                            color: Colors.white,
+                        child: Padding(
+                          padding: EdgeInsets.all(dimension.width10),
+                          child: Center(
+                            child: TextReusable(
+                              text: getFormattedDateRange(),
+                              fontSize: dimension.fontSize15,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -63,6 +140,9 @@ class HomePage extends StatelessWidget {
 
                     // icon or btn to next day
                     IconReusable(
+                      callBackOnTap: () {
+                        adjustDateRange(isNext: true);
+                      },
                       icon: Icons.arrow_forward,
                       sizeIcon: dimension.iconSize17,
                       color: Colors.white,
